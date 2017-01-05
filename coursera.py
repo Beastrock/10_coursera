@@ -2,6 +2,7 @@ import requests
 import random
 import json
 import argparse
+import os.path
 
 from collections import OrderedDict
 from openpyxl import Workbook
@@ -13,8 +14,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--courses", dest="courses_amount", action="store", type=int,
                         default=20, help="courses amount for getting information about")
-    parser.add_argument("--output", dest="output_filepath", action="store", type="string",
-                        default=None, help="filepath for outputting exel file")
+    parser.add_argument("--output", dest="output_filepath", action="store", type=str,
+                        default="", help="filepath for outputting exel file")
     return parser.parse_args()
 
 
@@ -47,8 +48,12 @@ def get_course_title(soup):
 
 
 def get_course_rating(soup):
-    rating_html = soup.find("div", "ratings-text")
-    return rating_html.text.split()[0] if rating_html is not None else None
+    try:
+        rating = float(soup.find("div", "ratings-text").text.split()[0])
+    except (IndexError, AttributeError, ValueError):
+        return "No rating"
+    else:
+        return rating
 
 
 def get_course_language(soup):
@@ -81,8 +86,8 @@ def output_courses_info_to_xlsx(courses_info, output_filepath):
     ws.append(["TITLE", "RATING", "LANGUAGE", "SUBTITLES", "TOTAL WEEKS", "START DATE"])
     for course_info in courses_info:
         ws.append(list(course_info.values()))
-    if output_filepath is not None:
-        wb.save("{}/coursera_courses.xlsx").format(output_filepath)
+    if os.path.exists(output_filepath):
+        wb.save("{}/coursera_courses.xlsx".format(output_filepath))
     else:
         wb.save("coursera_courses.xlsx")
 
