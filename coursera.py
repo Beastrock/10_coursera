@@ -15,7 +15,7 @@ def get_args():
     parser.add_argument("--courses", dest="courses_amount", action="store", type=int,
                         default=20, help="courses amount for getting information about")
     parser.add_argument("--output", dest="output_filepath", action="store", type=str,
-                        default="", help="filepath for outputting exel file")
+                        default="", help="filepath for outputting xlsx file")
     return parser.parse_args()
 
 
@@ -39,7 +39,7 @@ def get_course_page_html_content(course_page_url):
     except requests.exceptions.RequestException as error:
         print(error)
     else:
-        return BeautifulSoup(course_page.content.decode('utf-8', 'ignore'), "lxml")
+        return BeautifulSoup(course_page.content.decode("utf-8", "ignore"), "lxml")
 
 
 def get_course_title(soup):
@@ -77,7 +77,7 @@ def get_course_total_weeks(soup):
 def get_course_start_date(soup):
     course_json_data = soup.find("script", attrs={"type": "application/ld+json"})
     if course_json_data is not None:
-        return json.loads(course_json_data.text)['hasCourseInstance'][0]["startDate"]
+        return json.loads(course_json_data.text)["hasCourseInstance"][0]["startDate"]
 
 
 def output_courses_info_to_xlsx(courses_info, output_filepath):
