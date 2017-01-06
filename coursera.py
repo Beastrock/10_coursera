@@ -25,7 +25,6 @@ def get_random_courses_page_urls(amount):
         courses_xml_data = requests.get(courses_xml_data_page).content
     except requests.exceptions.RequestException as error:
         print(error)
-        return []
     else:
         tree = etree.XML(courses_xml_data)
         courses_amount = (len(tree))
