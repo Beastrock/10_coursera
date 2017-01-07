@@ -21,8 +21,8 @@ https://github.com/Beastrock/10_coursera.git`
 
 `--courses`  - random courses amount for to get information about, default value is 20.  
 
-`--output` - filepath for outputting xlsx file. If the argument is not specified, the output file will be put in the script's folder.  
- <b>NOTICE</b>: do not put the `/` at the end of this argument.
+`--output` - absolute folder filepath for outputted file. If the argument is not specified,  
+the output file will be put in the script's folder.  
 
 Launching example:  
 `python coursera.py --courses 5 --output "B:/courses_information"`

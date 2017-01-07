@@ -15,7 +15,7 @@ def get_args():
     parser.add_argument("--courses", dest="courses_amount", action="store", type=int,
                         default=20, help="courses amount for getting information about")
     parser.add_argument("--output", dest="output_filepath", action="store", type=str,
-                        default="", help="filepath for outputting xlsx file")
+                        default="", help="absolute folder filepath for outputted file")
     return parser.parse_args()
 
 
@@ -86,7 +86,7 @@ def output_courses_info_to_xlsx(courses_info, output_filepath):
     for course_info in courses_info:
         ws.append(list(course_info.values()))
     if os.path.exists(output_filepath):
-        wb.save("{}/coursera_courses.xlsx".format(output_filepath))
+        wb.save(os.path.join(output_filepath, "coursera_courses.xlsx"))
     else:
         wb.save("coursera_courses.xlsx")
 
