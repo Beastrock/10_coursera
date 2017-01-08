@@ -3,11 +3,16 @@ import random
 import json
 import argparse
 import os.path
+import logging
 
 from collections import OrderedDict
 from openpyxl import Workbook
 from bs4 import BeautifulSoup
 from lxml import etree
+
+
+def get_logger():
+    logging.basicConfig(level=logging.INFO)
 
 
 def get_args():
@@ -24,10 +29,11 @@ def get_random_courses_page_urls(amount):
     try:
         courses_xml_data = requests.get(courses_xml_data_page).content
     except requests.exceptions.RequestException as error:
-        print(error)
+        logging.error(u"Can not connect to coursera-xml-feed page: \n %s" % error)
+        return []
     else:
         tree = etree.XML(courses_xml_data)
-        courses_amount = (len(tree))
+        courses_amount = len(tree)
         random_numbers = random.sample(range(courses_amount), amount)
         return [tree[random_number][0].text for random_number in random_numbers]
 
@@ -36,7 +42,8 @@ def get_course_page_html_content(course_page_url):
     try:
         course_page = requests.get(course_page_url)
     except requests.exceptions.RequestException as error:
-        print(error)
+        logging.warning(
+            u"Can not connect to course URL: {} \n{}".format(course_page_url, error))
     else:
         return BeautifulSoup(course_page.content.decode("utf-8", "ignore"), "lxml")
 
@@ -50,7 +57,7 @@ def get_course_rating(soup):
     try:
         rating = float(soup.find("div", "ratings-text").text.split()[0])
     except (IndexError, AttributeError, ValueError):
-        return "No rating"
+        return None
     else:
         return rating
 
@@ -64,46 +71,60 @@ def get_course_subtitles(soup):
     try:
         subtitles = soup.find("div", "language-info").text.split(":")[1]
     except (IndexError, AttributeError):
-        return "No subtitles"
+        return None
     else:
         return subtitles
 
 
 def get_course_total_weeks(soup):
-    return len(soup.find_all("div", "week"))
+    weeks_html_list = soup.find_all("div", "week")
+    return len(weeks_html_list) if weeks_html_list else None
 
 
 def get_course_start_date(soup):
     course_json_data = soup.find("script", attrs={"type": "application/ld+json"})
-    if course_json_data is not None:
+    if course_json_data:
         return json.loads(course_json_data.text)["hasCourseInstance"][0]["startDate"]
 
 
-def output_courses_info_to_xlsx(courses_info, output_filepath):
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["TITLE", "RATING", "LANGUAGE", "SUBTITLES", "TOTAL WEEKS", "START DATE"])
+def output_courses_info_to_xlsx_file(courses_info):
+    work_book = Workbook()
+    work_sheet = work_book.active
+    work_sheet.append(["TITLE", "RATING", "LANGUAGE", "SUBTITLES", "TOTAL WEEKS", "START DATE"])
     for course_info in courses_info:
-        ws.append(list(course_info.values()))
-    if os.path.exists(output_filepath):
-        wb.save(os.path.join(output_filepath, "coursera_courses.xlsx"))
+        course_info_cells = [course_info if course_info is not None else "no info"
+                             for course_info in list(course_info.values())]
+        work_sheet.append(course_info_cells)
+    return work_book
+
+
+def save_xlsx_file(work_book, output_filepath):
+    if not output_filepath:
+        work_book.save("coursera_courses.xlsx")
+        logging.info(u"File was successfully saved to script's dir")
+        return
+    if not os.path.exists(output_filepath):
+        work_book.save("coursera_courses.xlsx")
+        logging.warning(u"Path does not exist. File was saved to script's dir")
     else:
-        wb.save("coursera_courses.xlsx")
+        work_book.save(os.path.join(output_filepath, "coursera_courses.xlsx"))
+        logging.info(u"File was successfully saved to dir")
 
 
 if __name__ == "__main__":
+    get_logger()
     args = get_args()
     courses_info = []
     for page_url in get_random_courses_page_urls(args.courses_amount):
         course_info = OrderedDict()
-        soup = get_course_page_html_content(page_url)
-        if soup is None:
+        course_page_html_content = get_course_page_html_content(page_url)
+        if course_page_html_content is None:
             break
-        course_info["title"] = get_course_title(soup)
-        course_info["rating"] = get_course_rating(soup)
-        course_info["language"] = get_course_language(soup)
-        course_info["subtitles"] = get_course_subtitles(soup)
-        course_info["total weeks"] = get_course_total_weeks(soup)
-        course_info["start_date"] = get_course_start_date(soup)
-        courses_info.append(course_info)
-    output_courses_info_to_xlsx(courses_info, args.output_filepath)
+        course_info["title"] = get_course_title(course_page_html_content)
+        course_info["rating"] = get_course_rating(course_page_html_content)
+        course_info["language"] = get_course_language(course_page_html_content)
+        course_info["subtitles"] = get_course_subtitles(course_page_html_content)
+        course_info["total_weeks"] = get_course_total_weeks(course_page_html_content)
+        course_info["start_date"] = get_course_start_date(course_page_html_content)
+        courses_info.append(OrderedDict(course_info))
+    save_xlsx_file(output_courses_info_to_xlsx_file(courses_info), args.output_filepath)

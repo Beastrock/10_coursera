@@ -4,12 +4,7 @@ Script gets URLs of some random [coursera](https://www.coursera.org/) learning c
 
 ## Requirements
 <b>Requests</b> is used  for getting web pages, <b>lxml</b> for parsing xml,  
- <b>BeautifulSoup4</b> for parsing html and <b>openpyxl</b> for xlsx file outputting:  
-   
-`lxml==3.4.3`  
-`requests==2.11.1`  
-`openpyxl==2.3.5`  
-`beautifulsoup4==4.5.1`
+ <b>BeautifulSoup4</b> for parsing html and <b>openpyxl</b> for xlsx file outputting.   
 
 ## Installing
 `git clone 
@@ -25,7 +20,7 @@ https://github.com/Beastrock/10_coursera.git`
 the output file will be put in the script's folder.  
 
 Launching example:  
-`python coursera.py --courses 5 --output "B:/courses_information"`
+`python coursera.py --courses 5 --output B:/courses_information`
 
 
 # Project Goals
