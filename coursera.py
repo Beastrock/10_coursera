@@ -27,23 +27,22 @@ def get_args():
 def get_random_courses_page_urls(amount):
     courses_xml_data_page = "https://www.coursera.org/sitemap~www~courses.xml"
     try:
-        courses_xml_data = requests.get(courses_xml_data_page).content
-    except requests.exceptions.RequestException as error:
-        logging.error(u"Can not connect to coursera-xml-feed page: \n %s" % error)
-        return []
+        courses_xml_data = requests.get(courses_xml_data_page, timeout=15).content
+    except requests.exceptions.RequestException:
+        raise requests.exceptions.RequestException(
+            u"Can not connect to coursera-xml-feed page")
     else:
         tree = etree.XML(courses_xml_data)
-        courses_amount = len(tree)
-        random_numbers = random.sample(range(courses_amount), amount)
-        return [tree[random_number][0].text for random_number in random_numbers]
+        all_courses_page_urls = [tree[i][0].text for i in range(len(tree))]
+        return random.sample(all_courses_page_urls, amount)
 
 
 def get_course_page_html_content(course_page_url):
     try:
-        course_page = requests.get(course_page_url)
+        course_page = requests.get(course_page_url, timeout=15)
     except requests.exceptions.RequestException as error:
-        logging.warning(
-            u"Can not connect to course URL: {} \n{}".format(course_page_url, error))
+        logging.info(
+            u"Can not connect to course URL:\n{}\n{}\n".format(course_page_url, error))
     else:
         return BeautifulSoup(course_page.content.decode("utf-8", "ignore"), "lxml")
 
@@ -83,8 +82,12 @@ def get_course_total_weeks(soup):
 
 def get_course_start_date(soup):
     course_json_data = soup.find("script", attrs={"type": "application/ld+json"})
-    if course_json_data:
-        return json.loads(course_json_data.text)["hasCourseInstance"][0]["startDate"]
+    try:
+        start_date = json.loads(course_json_data.text)["hasCourseInstance"][0]["startDate"]
+    except (KeyError, AttributeError):
+        return None
+    else:
+        return start_date
 
 
 def output_courses_info_to_xlsx_file(courses_info):
@@ -101,11 +104,11 @@ def output_courses_info_to_xlsx_file(courses_info):
 def save_xlsx_file(work_book, output_filepath):
     if not output_filepath:
         work_book.save("coursera_courses.xlsx")
-        logging.info(u"File was successfully saved to script's dir")
+        logging.info(u"File was successfully saved to script dir")
         return
     if not os.path.exists(output_filepath):
         work_book.save("coursera_courses.xlsx")
-        logging.warning(u"Path does not exist. File was saved to script's dir")
+        logging.warning(u"Path does not exist. File was saved to script dir")
     else:
         work_book.save(os.path.join(output_filepath, "coursera_courses.xlsx"))
         logging.info(u"File was successfully saved to dir")
@@ -119,7 +122,8 @@ if __name__ == "__main__":
         course_info = OrderedDict()
         course_page_html_content = get_course_page_html_content(page_url)
         if course_page_html_content is None:
-            break
+            courses_info.append({"error": "could not connect to %s" % page_url})
+            continue
         course_info["title"] = get_course_title(course_page_html_content)
         course_info["rating"] = get_course_rating(course_page_html_content)
         course_info["language"] = get_course_language(course_page_html_content)
